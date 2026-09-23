@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Obstacle Detector</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial;
+        }
+
+        video {
+            width: 500px;
+            max-width: 90%;
+        }
+
+        button {
+            padding: 10px;
+            margin: 10px;
+        }
+
+        #result {
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Obstacle Detector</h1>
+
+    <video id="camera" autoplay></video>
+
+    <br>
+
+    <button onclick="start()">Start Camera</button>
+
+    <p id="result">Waiting...</p>
+
+
+    <script>
+
+        let model;
+        let video = document.getElementById("camera");
+
+        // Remember the last warning
+        let lastWarning = "";
+
+
+        // Voice function
+        function speak(message) {
+
+            let speech = new SpeechSynthesisUtterance(message);
+
+            speech.lang = "en-IN";
+            speech.rate = 1;
+
+            speechSynthesis.cancel();
+            speechSynthesis.speak(speech);
+        }
+
+
+        async function start() {
+
+            // Start phone camera
+            let stream =
+                await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: "environment"
+                    }
+                });
+
+            video.srcObject = stream;
+
+            // Load AI
+            model = await cocoSsd.load();
+
+            speak("Obstacle detector started");
+
+            detect();
+        }
+
+
+        async function detect() {
+
+            let objects =
+                await model.detect(video);
+
+            if (objects.length > 0) {
+
+                let object = objects[0];
+
+                let name = object.class;
+
+                let x = object.bbox[0];
+
+                let width = video.videoWidth;
+
+                let warning = "";
+
+
+                // LEFT
+                if (x < width / 3) {
+
+                    warning = "Obstacle on left";
+
+                }
+
+                // CENTER
+                else if (x < width * 2 / 3) {
+
+                    warning = "Obstacle ahead";
+
+                }
+
+                // RIGHT
+                else {
+
+                    warning = "Obstacle on right";
+
+                }
+
+
+                // Show warning on screen
+                document.getElementById("result").innerHTML =
+                    warning + ": " + name;
+
+
+                // Speak only if warning changed
+                if (warning != lastWarning) {
+
+                    speak(warning);
+
+                    lastWarning = warning;
+                }
+
+            }
+
+            else {
+
+                document.getElementById("result").innerHTML =
+                    "No obstacle";
+
+                lastWarning = "";
+            }
+
+
+            // Check again after 500 milliseconds
+            setTimeout(detect, 500);
+        }
+
+    </script>
+
+</body>
+</html>
